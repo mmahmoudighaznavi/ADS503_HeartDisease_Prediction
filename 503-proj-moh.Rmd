@@ -13,7 +13,7 @@ library(mlbench)
 library(Hmisc)
 library(e1071)
 library(caret)
-library(tidyr)
+##library(tidyr)
 library(corrplot)
 library(AppliedPredictiveModeling)
 library(car)
@@ -132,6 +132,7 @@ mosaicplot(heart_df$sex ~ heart_df$heart.disease,
            xlab="Gender", ylab="Heart disease")
 
 ```
+
 ```{r}
 #chest pain type analysis
 #heart_df$chest.pain.type <- as.factor(heart_df$chest.pain.type)
@@ -152,6 +153,7 @@ boxplot(heart_df$resting.blood.pressure ~ heart_df$heart.disease,
         main="Heart disease distribution by resting.blood.pressure",
          ylab="resting.blood.pressure",xlab="Heart disease")
 ```
+
 ```{r}
 #major blood vessels vs heart.disease analysis
 #heart_df$major.vessels <- as.factor(heart_df$major.vessels)
@@ -225,3 +227,137 @@ lda_predict <- predict(lda_fit, heart_test)
 confusionMatrix(lda_predict, as.factor(heart_test$heart.disease))
 ```
 
+```{r}
+gbmGrid <-  expand.grid(cp=c(0.01))
+fitControl <- trainControl(method = "repeatedcv",
+                           number = 10,
+                           repeats = 10,
+                           classProbs = TRUE,
+                           summaryFunction = twoClassSummary)
+heart_df$heart.disease<-make.names(heart_df$heart.disease)
+system.time(gbm.ada.1 <- caret::train(heart.disease ~ ., 
+                                      data = heart_df ,
+                                      method = "rpart", 
+                                      trControl = fitControl,
+                                      metric="ROC",
+                                      tuneGrid=gbmGrid))
+
+
+gbm.ada.1
+
+```
+
+```{r}
+varImp(gbm.ada.1)
+
+```
+
+
+
+
+```{r}
+library(rpart)
+
+library(rpart.plot)
+rpart.plot(gbm.ada.1$finalModel,   
+           type=5,
+           fallen.leaves = FALSE,
+           box.palette = "GnRd",
+           nn=TRUE)
+
+```
+
+
+```{r}
+# Converting the dependent variables to factors
+heart_train$heart.disease <- as.factor(heart_train$heart.disease)
+heart_test$heart.disease <- as.factor(heart_test$heart.disease)
+```
+##KNN
+```{r}
+ctrl <- trainControl(method = "cv", verboseIter = FALSE, number = 5)
+knnFit <- train(heart.disease ~ ., 
+                data = heart_train, method = "knn", preProcess = c("center","scale"),
+                trControl = ctrl , tuneGrid = expand.grid(k = seq(1, 20, 2)))
+
+plot(knnFit)
+
+
+knnPredict <- predict(knnFit,newdata = heart_test)
+knn_results <- confusionMatrix(knnPredict, heart_test$heart.disease )
+
+knn_results
+
+
+```
+##SVM
+
+```{r}
+ctrl <- trainControl(method = "cv", verboseIter = FALSE, number = 5)
+
+grid_svm <- expand.grid(C = c(0.01, 0.1, 1, 10, 20))
+
+
+svm_fit <- train(heart.disease ~ .,data = heart_train,
+                 method = "svmLinear", preProcess = c("center","scale"),
+                 tuneGrid = grid_svm, trControl = ctrl)
+
+plot(svm_fit)
+
+svm_predict <- predict(svm_fit, newdata = heart_test)
+svm_results <- confusionMatrix(svm_predict, heart_test$heart.disease)
+
+svm_results
+```
+##RF
+```{r}
+
+control<- trainControl(method = "cv", number = 5, verboseIter = FALSE)
+grid <-data.frame(mtry = seq(1, 10, 2))
+
+rf_fit <- train(heart.disease ~ ., method = "rf", data = heart_train, ntree = 20, trControl = control,
+                  tuneGrid = grid)
+
+plot(rf_fit)
+
+rf_predict <- predict(rf_fit, newdata = heart_test)
+
+rf_results <- confusionMatrix(rf_predict, heart_test$heart.disease)
+
+rf_results
+
+```
+##GBM
+```{r}
+gbmGrid <-  expand.grid(interaction.depth = c(1, 5, 10, 25, 30),
+                        n.trees = c(5, 10, 25, 50),
+                        shrinkage = c(0.1, 0.2, 0.3,  0.4, 0.5),
+                        n.minobsinnode = 20)
+
+
+gbm_fit <- train(heart.disease ~ ., method = "gbm", data = heart_train,  trControl = control, verbose = FALSE, tuneGrid = gbmGrid)
+
+plot(gbm_fit)
+
+gbm_predict <- predict(gbm_fit, newdata = heart_test)
+
+gbm_results <- confusionMatrix(gbm_predict,heart_test$heart.disease)
+
+gbm_results
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
