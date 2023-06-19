@@ -265,7 +265,7 @@ rpart.plot(rpart_fit$finalModel,
 
 
 
-
+##KNN
 ```{r}
 ctrl <- trainControl(method = "cv", verboseIter = FALSE, number = 5)
 set.seed(503)
@@ -325,7 +325,20 @@ rf_predict <- predict(rf_fit, heart_test)
 confusionMatrix(rf_predict, as.factor(heart_test$heart.disease))
 ```
 
-##GBM
+
+##QDA
+```{r}
+set.seed(503)
+qda_fit <- train(as.factor(heart.disease) ~ ., method = "qda", data = heart_train)
+qda_fit
+
+qda_predict <- predict(qda_fit, heart_test)
+confusionMatrix(qda_predict, as.factor(heart_test$heart.disease))
+```
+
+
+
+##Gradient Boosting Machine
 ```{r}
 gbmGrid <-  expand.grid(interaction.depth = c(1, 5, 10, 25, 30),
                         n.trees = c(5, 10, 25, 50),
@@ -339,6 +352,35 @@ gbm_predict <- predict(gbm_fit, heart_test)
 confusionMatrix(gbm_predict, as.factor(heart_test$heart.disease))
 ```
 
+##Bagged trees
+```{r}
+set.seed(503)
+bagged_fit <- train(as.factor(heart.disease) ~ ., method = "treebag", nbagg=50, 
+                    data = heart_train,  trControl = control, metric="Accuracy")
+
+bagged_fit
+bagged_predict <- predict(bagged_fit, heart_test)
+confusionMatrix(bagged_predict, as.factor(heart_test$heart.disease))
+```
+##Neural network
+```{r}
+set.seed(503)
+
+nnetGrid <- expand.grid(size=1:3, decay=c(0,0.1,0.2,0.3,0.4,0.5,1,2))
+
+nnet_fit <- train(as.factor(heart.disease) ~ ., method = "nnet", 
+                    data = heart_train, tuneGrid=nnetGrid,
+                  trace=FALSE, maxit=2000, trControl = control, metric="Accuracy")
+
+nnet_fit
+
+nnet_predict <- predict(nnet_fit, heart_test)
+confusionMatrix(nnet_predict, as.factor(heart_test$heart.disease))
+```
+
+
+
+
 Support vector machine with svmlinear kernel has the best performance among all.
 ```{r}
 #top important variables of SVM
@@ -347,22 +389,12 @@ plot(varImp(svm_fit, top=5))
 ```
 
 
-```{r}
 
-```
-
-```{r}
-
-
-```
 
 ```{r}
 
 
 ```
-
-
-
 
 ```{r}
 
@@ -372,13 +404,17 @@ plot(varImp(svm_fit, top=5))
 
 
 
-
-
-
-
-
-
-
 ```{r}
 
+
 ```
+
+
+
+
+
+
+
+
+
+
