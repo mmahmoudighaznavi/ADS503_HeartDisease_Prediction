@@ -1,0 +1,384 @@
+---
+title: "project-503"
+author: "Mohammad"
+date: "2023-06-03"
+output:
+  word_document: default
+  html_document: default
+---
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(mlbench)
+library(Hmisc)
+library(e1071)
+library(caret)
+##library(tidyr)
+library(corrplot)
+library(AppliedPredictiveModeling)
+library(car)
+library(lattice)
+library(lars)
+library(stats)
+library(pls)
+library(dplyr)
+library(kernlab)
+library(randomForest)
+library(gbm)
+library(earth)
+library(plotmo)
+library(plotrix)
+library(TeachingDemos)
+```
+
+
+
+```{r}
+#load heart disease dataset
+heart_df <- read.table(file.choose(), header=TRUE, sep=",")
+head(heart_df)
+
+#lets see how dataset look like
+str(heart_df)
+
+summary(heart_df)
+
+```
+
+
+```{r}
+#checking the NA values
+sum(is.na(heart_df))
+
+
+```
+
+
+```{r}
+# check Distinct values
+
+
+heart_df %>% 
+  summarise(n_age = n_distinct(age), n_sex = n_distinct(sex),
+            n_chestpain = n_distinct(chest.pain.type),
+            n_restbp=n_distinct(resting.blood.pressure),
+            n_chol = n_distinct(serum.cholestoral), 
+            n_fastbs = n_distinct(fasting.blood.sugar),
+            n_restecg = n_distinct(resting.electrocardiographic.results), 
+            n_HR= n_distinct(max.heart.rate),
+            n_exercise = n_distinct(exercise.induced.angina), 
+            n_oldpeak = n_distinct(oldpeak),
+            n_STsegment = n_distinct(ST.segment), 
+            n_mvessels = n_distinct(major.vessels), 
+            n_thal = n_distinct(thal),
+            n_heartdisease = n_distinct(heart.disease))
+
+
+
+
+```
+
+```{r}
+#age distribution vs heart disease plot
+heart_df %>% group_by(age, heart.disease) %>% summarise(count = n()) %>%
+  ggplot() + geom_bar(aes(age, count,   fill = as.factor(heart.disease)), stat = "Identity") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, size = 10)) + 
+  ylab("Count") + xlab("Age") + labs(fill = "heart.disease")
+```
+Blue plot which is the presence of heart disease is left skewed which shows age has a positive correlation with heart disease. 
+
+```{r}
+#boxplot to displays the age distribution of heart diagnosis
+boxplot(heart_df$age ~ heart_df$heart.disease,
+        main="Heart disease distribution by Age",
+         ylab="Age",xlab="Heart disease")
+```
+
+```{r}
+#Gender analysis
+#The proportion of females and males patients in the dataset.
+
+heart_df %>% 
+    group_by( sex ) %>% 
+    summarise( percent = 100 * n() / nrow( heart_df ))
+```
+
+
+There are 32.2 % females and 67.8% males in the dataset
+
+
+
+```{r}
+#Check the percentage of males and females with heart disease
+
+female_yes <- table(heart_df[heart_df$sex==0,]$heart.disease)
+male_yes <- table(heart_df[heart_df$sex==1,]$heart.disease)
+FMcombine_yes <- rbind(female_yes,male_yes)
+
+#Rename columns names and rows names.
+colnames(FMcombine_yes) <- c("Yes.disease", "No.disease")
+rownames(FMcombine_yes) <- c("Females", "Males")
+
+#Display the table
+FMcombine_yes
+```
+There are 67 females out of 87 who have diagnosed with heart disease and 83 males out of 183 were diagnosed with heart disease.
+
+```{r}
+#mosaic plot for gender vs heart.disease
+mosaicplot(heart_df$sex ~ heart_df$heart.disease,
+           main="Heart disease vs Gender", shade=FALSE,color=blues9,
+           xlab="Gender", ylab="Heart disease")
+
+```
+
+```{r}
+#chest pain type analysis
+#heart_df$chest.pain.type <- as.factor(heart_df$chest.pain.type)
+
+ggplot(data = heart_df, aes(x = heart.disease, fill = as.factor(chest.pain.type))) + 
+  geom_bar(position = "fill") +
+  labs(title = "Heart disease Distributions by Chest pain type",
+       x = "Heart disease",
+       y = "chest pain type") +
+  theme_test()
+```
+
+
+```{r}
+
+#Rest Blood Pressure distribution vs heart disease plot
+boxplot(heart_df$resting.blood.pressure ~ heart_df$heart.disease,
+        main="Heart disease distribution by resting.blood.pressure",
+         ylab="resting.blood.pressure",xlab="Heart disease")
+```
+
+```{r}
+#major blood vessels vs heart.disease analysis
+#heart_df$major.vessels <- as.factor(heart_df$major.vessels)
+
+ggplot(data = heart_df, aes(x = heart.disease, fill = as.factor(major.vessels))) + 
+  geom_bar(position = "fill") +
+  labs(title = "Heart disease Distributions by Number of major vessels ",
+       x = "Heart disease",
+       y = "Number of major vessels") +
+  theme_test()
+```
+
+```{r}
+#serum.cholestoral distribution vs heart disease plot
+
+boxplot(heart_df$serum.cholestoral ~ heart_df$heart.disease,
+        main="Heart disease distribution by serum.cholestoral",
+         ylab="serum.cholestoral",xlab="Heart disease")
+```
+
+
+```{r}
+#max.heart.rate distribution vs heart disease plot
+
+boxplot(heart_df$max.heart.rate ~ heart_df$heart.disease,
+        main="Heart disease distribution by max.heart.rate",
+         ylab="max.heart.rate",xlab="Heart disease")
+
+```
+
+```{r}
+
+```
+
+
+
+
+
+
+```{r}
+#correlations
+corr <- cor(heart_df[,1:13])
+
+round(corr,2)
+```
+
+```{r}
+#plot correlations
+corrplot::corrplot(cor(heart_df[, 1:13]))
+```
+
+```{r}
+#split dataset
+trainingrows <- createDataPartition(heart_df$heart.disease, p=0.8, list=FALSE)
+heart_train <- heart_df[trainingrows,]
+heart_test <- heart_df[-trainingrows,]
+
+#preprocess including center and scale
+heart_trainimp <- preProcess(heart_train, "knnImpute")
+heart_trainpredict <- predict(heart_trainimp, heart_train)
+heart_testpredict <- predict(heart_trainimp, heart_test)
+
+
+summary(heart_trainpredict)
+```
+##Linear Discriminant Analysis
+
+```{r}
+
+#LDA
+set.seed(503)
+lda_fit <- train(as.factor(heart.disease) ~ ., method = "lda", data = heart_train)
+lda_fit
+lda_predict <- predict(lda_fit, heart_test)
+
+
+confusionMatrix(lda_predict, as.factor(heart_test$heart.disease))
+```
+##Logistic Regression
+
+```{r}
+
+set.seed(503)
+lr_fit <- train(as.factor(heart.disease) ~ ., method = "glm", data = heart_train)
+lr_fit
+lr_predict <- predict(lr_fit, heart_test)
+confusionMatrix(lr_predict, as.factor(heart_test$heart.disease))
+```
+
+```{r}
+#rpart 
+set.seed(503)
+rpart_fit <- train(as.factor(heart.disease) ~ ., method = "rpart", data = heart_train)
+rpart_fit
+rpart_predict <- predict(rpart_fit, heart_test)
+confusionMatrix(rpart_predict, as.factor(heart_test$heart.disease))
+```
+
+```{r}
+library(rpart)
+
+library(rpart.plot)
+rpart.plot(rpart_fit$finalModel,   
+           type=5,
+           fallen.leaves = FALSE,
+           box.palette = "GnRd",
+           nn=TRUE)
+```
+
+
+
+
+```{r}
+ctrl <- trainControl(method = "cv", verboseIter = FALSE, number = 5)
+set.seed(503)
+knn_fit <- train(as.factor(heart.disease) ~ ., 
+                data = heart_train, method = "knn", preProcess = c("center","scale"),
+                trControl = ctrl , tuneGrid = expand.grid(k = seq(1, 20, 2)))
+
+knn_fit
+knn_predict <- predict(knn_fit, heart_test)
+confusionMatrix(knn_predict, as.factor(heart_test$heart.disease))
+```
+
+
+
+
+##Support Vector Machine (SVMLinear)
+```{r}
+ctrl <- trainControl(method = "cv", verboseIter = FALSE, number = 5)
+set.seed(503)
+
+grid_svm <- expand.grid(C = c(0.01, 0.1, 1, 10, 20))
+
+
+svm_fit <- train(as.factor(heart.disease) ~ .,data = heart_train,
+                 method = "svmLinear", preProcess = c("center","scale"),
+                 tuneGrid = grid_svm, trControl = ctrl)
+svm_fit
+svm_predict <- predict(svm_fit, heart_test)
+confusionMatrix(svm_predict, as.factor(heart_test$heart.disease))
+```
+### Support Vector Machines with Radial kernel
+```{r}
+
+sigmaEst <- kernlab::sigest(as.matrix(heart_train[,1:13]))
+svmgrid <- expand.grid(sigma = sigmaEst, C = 2^seq(-4,+4))
+
+set.seed(503)
+svmR_fit <- train(as.factor(heart.disease) ~ .,data = heart_train,
+                 method = "svmRadial", preProcess = c("center","scale"),
+                 tuneGrid = svmgrid, trControl = ctrl)
+svmR_fit
+svmR_predict <- predict(svmR_fit, heart_test)
+confusionMatrix(svmR_predict, as.factor(heart_test$heart.disease))
+```
+
+
+##Random Forest
+```{r}
+control<- trainControl(method = "cv", number = 5, verboseIter = FALSE)
+grid <-data.frame(mtry = seq(1, 10, 2))
+set.seed(503)
+rf_fit <- train(as.factor(heart.disease) ~ ., method = "rf", data = heart_train, ntree = 20, trControl = control,
+                  tuneGrid = grid)
+rf_fit
+
+rf_predict <- predict(rf_fit, heart_test)
+confusionMatrix(rf_predict, as.factor(heart_test$heart.disease))
+```
+
+##GBM
+```{r}
+gbmGrid <-  expand.grid(interaction.depth = c(1, 5, 10, 25, 30),
+                        n.trees = c(5, 10, 25, 50),
+                        shrinkage = c(0.1, 0.2, 0.3,  0.4, 0.5),
+                        n.minobsinnode = 20)
+
+set.seed(503)
+gbm_fit <- train(as.factor(heart.disease) ~ ., method = "gbm", data = heart_train,  trControl = control, verbose = FALSE, tuneGrid = gbmGrid)
+gbm_fit
+gbm_predict <- predict(gbm_fit, heart_test)
+confusionMatrix(gbm_predict, as.factor(heart_test$heart.disease))
+```
+
+Support vector machine with svmlinear kernel has the best performance among all.
+```{r}
+#top important variables of SVM
+varImp(svm_fit, top=5)
+plot(varImp(svm_fit, top=5))
+```
+
+
+```{r}
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+
+
+```
+
+
+
+
+```{r}
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+```
