@@ -392,7 +392,17 @@ plot(varImp(svm_fit, top=5))
 
 
 ```{r}
+set.seed(503)
+mda_fit <- train(x = heart_train[, 1:13],
+                 y = as.factor(heart_train$heart.disease),
+                 method = "mda",
+                 tuneGrid = expand.grid(subclasses = 1:3),
+                 metric = "Accuracy",
+                 trControl = ctrl)
+mda_fit
 
+mda_predict <- predict(mda_fit, heart_test)
+confusionMatrix(mda_predict, as.factor(heart_test$heart.disease))
 
 ```
 
