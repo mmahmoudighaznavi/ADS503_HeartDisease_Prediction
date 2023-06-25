@@ -8,10 +8,13 @@ This project was created to satisfy the requirement for graduate level course in
 
 ## Contents of the Repository 
 This repository is organized under the following sub-directories:
-* **data_files**
+* **CSV file**
 * This contains dataset was used for this project in csv format
 * **R Codes**
 * The rmd file that is reproducable
+* **PDF of final paper**
+* The pdf file contains written explanation of all steps with knitted codes at the end
+* **PPT file of presentation
 
 ## Data and Source
 The Heart Disease Prediction dataset comes from:
