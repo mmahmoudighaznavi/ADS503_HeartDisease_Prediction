@@ -14,7 +14,8 @@ This repository is organized under the following sub-directories:
 * The rmd file that is reproducable
 * **PDF of final paper**
 * The pdf file contains written explanation of all steps with knitted codes at the end
-* **PPT file of presentation
+* **PPT file**
+* includes the presentaion of steps for this project
 
 ## Data and Source
 The Heart Disease Prediction dataset comes from:
